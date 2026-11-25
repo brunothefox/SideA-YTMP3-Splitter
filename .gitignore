@@ -1,0 +1,12 @@
+.venv/
+data/
+exports/
+tools/
+__pycache__/
+.pytest_cache/
+test-results/
+build/
+dist/
+releases/
+workspace/
+*.part
