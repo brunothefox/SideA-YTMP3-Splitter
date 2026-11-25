@@ -27,6 +27,9 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r requirements.txt pyinstaller
+      - name: Read release version
+        id: version
+        run: python -c "from runtime import VERSION; print('version=' + VERSION)" >> $env:GITHUB_OUTPUT
       - name: Install official CPU worker for portable package
         run: python -c "from setup_components import install_component; J=type('J',(),{'update':lambda self,**kw:None}); install_component('engine',J())"
       - run: python -m PyInstaller --noconfirm SideA.spec
@@ -54,7 +57,9 @@ jobs:
       - name: Publish downloadable release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         shell: bash
         run: |
-          gh release view v1.0.0 >/dev/null 2>&1 || gh release create v1.0.0 --target "$GITHUB_SHA" --title "Side A 1.0.0" --notes-file CHANGELOG.md
-          gh release upload v1.0.0 releases/SideA-1.0.0-windows-x64.zip releases/SideA-1.0.0-source.zip releases/SHA256SUMS.txt --clobber
+          tag="v${RELEASE_VERSION}"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "$GITHUB_SHA" --title "Side A ${RELEASE_VERSION}" --notes-file CHANGELOG.md
+          gh release upload "$tag" "releases/SideA-${RELEASE_VERSION}-windows-x64.zip" "releases/SideA-${RELEASE_VERSION}-source.zip" releases/SHA256SUMS.txt --clobber

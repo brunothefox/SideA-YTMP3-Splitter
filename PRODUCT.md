@@ -18,6 +18,8 @@ Imported projects and edits persist locally. The editor offers undo/redo, track 
 Runs on the user's computer, bound to localhost. Files stay in the local data directory; YouTube imports require internet access.
 
 ## Capabilities and Constraints
+
+YouTube import accepts videos, Shorts, share/embed links, Music videos, completed livestream recordings, playlists and channel upload tabs. Collections are listed for explicit selection with a bounded range; videos import sequentially into separate projects. Partial failures and cancelled batch retries retain successful imports. A video-plus-playlist link defaults to that one video. Private/restricted/DRM/sign-in-required content and ongoing livestreams are not guaranteed to import.
 Metadata is not song recognition. Sources without chapters need manual timestamps. Stream copying preserves the existing codec with frame-level cut precision. Re-encoding supports MP3, FLAC, and WAV; lossless export cannot restore missing source quality.
 
 Explicit-language cleanup uses local multilingual speech recognition, word dictionaries/custom phrases, and limited theme phrase signals. Users review context and timing, add manual marks, and choose full-signal mute or bleep replacement. Approved edits are applied before shifts/padding and included in export reports. Embedded descriptive metadata can be stripped. Neither content cleanup nor tag removal guarantees Roblox approval or clears copyright. Vocal-only removal and exhaustive semantic theme classification are not implemented.

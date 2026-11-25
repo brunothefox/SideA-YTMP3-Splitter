@@ -1,5 +1,13 @@
 # Changes
 
+## 1.1.0
+
+- YouTube Shorts, share, embed, recorded-live, Music, and channel-upload links normalize consistently.
+- Playlist/channel links show a selectable video list, with start position, batch size, and pagination.
+- Selected videos import as separate projects; per-video errors do not discard successful sources.
+- Failed/cancelled playlist batches retry unfinished items while reusing completed projects.
+- Release packaging and CI read the app version instead of overwriting the original 1.0.0 release.
+
 ## 1.0.0
 
 - Local audio/YouTube splitting with editable chapters, individual downloads and ZIPs.

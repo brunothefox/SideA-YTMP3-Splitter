@@ -30,6 +30,7 @@ from jobs import JOBS, RUNNERS, checkpoint, managed_run, new_job, register_jobs
 from setup_components import register_setup
 from project_io import register_projects
 from advanced import register_advanced,stems_for
+from youtube_import import YouTubeRequest,register_youtube
 
 ROOT = HOME
 DATA = ROOT / 'data'
@@ -223,51 +224,7 @@ async def upload(file: UploadFile = File(...)):
     return new_job(work)
 
 
-class YouTubeRequest(BaseModel):
-    url: str = Field(max_length=2048)
-
-
-@app.post('/api/youtube')
-def youtube(body: YouTubeRequest):
-    parsed = urlparse(body.url.strip())
-    if parsed.scheme not in {'http', 'https'} or parsed.hostname not in {'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'} or parsed.username or parsed.port not in {None, 80, 443}:
-        raise HTTPException(400, 'Paste a valid youtube.com or youtu.be video link.')
-    video_id = (parsed.path.strip('/').split('/')[0] if parsed.hostname == 'youtu.be'
-                else parse_qs(parsed.query).get('v', [''])[0] if parsed.path == '/watch'
-                else parsed.path.strip('/').split('/')[-1] if parsed.path.startswith(('/shorts/', '/live/', '/embed/')) else '')
-    if not re.fullmatch(r'[\w-]{11}', video_id, flags=re.ASCII):
-        raise HTTPException(400, 'Use a link to a single YouTube video, not a channel or playlist.')
-    video_url = 'https://www.youtube.com/watch?v=' + video_id
-    directory = DATA / uuid.uuid4().hex
-    directory.mkdir()
-    def work(job):
-        def hook(event):
-            if event['status'] == 'downloading':
-                total = event.get('total_bytes') or event.get('total_bytes_estimate') or 0
-                progress = min(75, 75 * event.get('downloaded_bytes', 0) / total) if total else 10
-                job.update(progress=progress, message='Downloading the best available audio…')
-        options = {'format': 'bestaudio/best', 'noplaylist': True, 'quiet': True,
-                   'outtmpl': str(directory / 'source.%(ext)s'), 'progress_hooks': [hook],
-                   'ffmpeg_location': FFMPEG, 'socket_timeout': 30, 'retries': 2,
-                   'max_filesize': MAX_UPLOAD, 'js_runtimes': {'node': {}},
-                   'remote_components': ['ejs:github'],
-                   'match_filter': lambda info, **kwargs: 'Live videos are not supported.' if info.get('is_live') else None}
-        try:
-            job.update(message='Reading video information…', progress=5)
-            with yt_dlp.YoutubeDL(options) as downloader:
-                info = downloader.extract_info(video_url, download=True)
-                if not info or info.get('_type') in {'playlist', 'multi_video'}:
-                    raise ValueError('Paste a link to a single video.')
-                path = Path(downloader.prepare_filename(info))
-        except Exception as error:
-            shutil.rmtree(directory, ignore_errors=True)
-            raise ValueError('YouTube import failed. The video may be restricted or YouTube may require authentication. You can upload a local audio file instead. Details: ' + str(error)) from error
-        job.update(message='Reading chapters and preparing your preview…', progress=80)
-        try:
-            return prepare_source(directory, path, info)
-        except Exception as error:
-            raise ValueError('The YouTube audio downloaded, but local audio processing failed: ' + str(error)) from error
-    return new_job(work,kind='youtube',payload=body.model_dump())
+youtube=register_youtube(app,DATA,FFMPEG,MAX_UPLOAD,prepare_source,new_job)
 
 
 @app.get('/api/jobs/{jid}')

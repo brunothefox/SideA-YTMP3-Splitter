@@ -4,7 +4,7 @@
 
 ## Download and launch
 
-Windows: download `SideA-1.0.0-windows-x64.zip`, extract the entire folder, then double-click `SideA.exe`. Keep the terminal open while using the app; Ctrl+C stops it. Python, FFmpeg, the CPU speech worker, and Node.js are bundled. No administrator installation is required. The app opens localhost automatically and picks another local port if 8000 is occupied. The first release is unsigned.
+Windows: download the latest `SideA-…-windows-x64.zip`, extract the entire folder, then double-click `SideA.exe`. Keep the terminal open while using the app; Ctrl+C stops it. Python, FFmpeg, the CPU speech worker, and Node.js are bundled. No administrator installation is required. The app opens localhost automatically and picks another local port if 8000 is occupied. Releases are unsigned.
 
 Open **Setup & jobs** to download speech models (148 MB or 488 MB). An optional NVIDIA engine enables GPU processing; **Create compact accuracy model** generates a quantized version. These downloads are separate so the public package stays smaller. Audio is processed locally. Downloads need internet; YouTube imports also contact YouTube. Browser-only NekoDJ conversion works without uploading audio to the local server.
 
@@ -42,7 +42,15 @@ python -m venv .venv
 
 ## Split a mix
 
-Upload an audio file (up to 2 GB) or enter a single YouTube video URL. Side A reads title/artist tags, embedded chapters, YouTube chapters, and description timestamps. It does not recognize songs by listening. Without chapters, paste a timestamped tracklist or add cuts yourself.
+Upload an audio file (up to 2 GB), or paste a YouTube link. Standard videos, Shorts, youtu.be shares, embeds, YouTube Music, and completed livestream recordings import individually. Playlists and channel uploads open a selectable list. Side A reads title/artist tags, embedded chapters, YouTube chapters, and description timestamps. It does not recognize songs by listening. Without chapters, paste a timestamped tracklist or add cuts yourself.
+
+### YouTube playlists, Shorts, and channels
+
+Paste the link into **Bring a YouTube video or playlist**, then click **Read link & import**. For a collection, select the videos and choose **Import selected videos**. Each video gets a separate project with chapters when available. Progress and failures are shown per video; failed videos do not discard successful imports. Use **Retry unfinished videos** or retry a cancelled job to retain completed sources. The most recent batch can be recovered after refreshing the browser.
+
+Playlist options let you choose a starting position and list up to 200 videos per batch (50 by default). **Next videos** reads the next range. A watch URL containing both a video and a playlist imports only that video unless **Use the linked playlist** is checked. Collection imports run sequentially and support the existing job pause/cancel/retry controls.
+
+Private, deleted, region-restricted, age-gated, DRM-protected, bot-blocked, or sign-in-required content may be unavailable. Ongoing/upcoming livestreams are not imported; completed recordings can be. No account cookies are read, and link support is not a promise that every YouTube item can be downloaded.
 
 Preview each track; edit start times and names. Export MP3 at 320 kbps, FLAC, 24-bit WAV, or copy the original codec without re-encoding. Download individual tracks or a ZIP. Original-codec cuts have audio-frame precision; MP3/FLAC/WAV use accurate seeking. Lossless output cannot improve a compressed source.
 

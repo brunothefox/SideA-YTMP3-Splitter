@@ -8,7 +8,7 @@ HOME = Path(os.environ.get('SIDEA_HOME') or (Path(sys.executable).parent / 'work
 HOME.mkdir(parents=True,exist_ok=True)
 node_directory=ASSETS/'tools/node'
 if node_directory.exists():os.environ['PATH']=str(node_directory)+os.pathsep+os.environ.get('PATH','')
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 
 
 def tool(name):
