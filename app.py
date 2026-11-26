@@ -343,13 +343,12 @@ def clean_title(title):
     return re.sub(r'\s+', ' ', title).strip(' -')[:100] or 'Untitled Track'
 
 
-@app.post('/api/sources/{sid}/export')
-def export(sid: str, body: ExportRequest):
+def prepare_export(sid: str, body: ExportRequest):
     source = get_source(sid)
     if body.format not in {'mp3', 'flac', 'wav', 'original', 'ogg'}:
         raise HTTPException(400, 'Choose MP3, FLAC, WAV, or original audio.')
-    if body.neko and body.format not in {'mp3', 'ogg', 'wav'}:
-        raise HTTPException(400, 'NekoDJ export supports MP3, OGG, and WAV.')
+    if body.neko and body.format not in {'mp3', 'ogg', 'wav', 'flac'}:
+        raise HTTPException(400, 'Pitch and speed processing supports MP3, OGG, FLAC, and WAV.')
     if body.format == 'original' and (body.padding_start or body.padding_end or body.fade):
         raise HTTPException(400, 'Padding and fades require re-encoding. Choose MP3, OGG, FLAC, or WAV.')
     if body.cleanup_mode not in {'mute', 'bleep'}:
@@ -375,12 +374,11 @@ def export(sid: str, body: ExportRequest):
         copy_ext = {'aac': '.m4a', 'alac': '.m4a', 'opus': '.ogg', 'vorbis': '.ogg',
                     'mp3': '.mp3', 'flac': '.flac'}.get(codec, '.mka')
         extension = copy_ext if body.format == 'original' else '.' + body.format
-        settings = {'mp3': ['-c:a', 'libmp3lame', '-b:a', '192k' if body.neko else '320k'],
+        settings = {'mp3': ['-c:a', 'libmp3lame', '-b:a', '320k'],
                     'ogg': ['-c:a', 'libvorbis', '-q:a', '6'],
                     'flac': ['-c:a', 'flac'], 'wav': ['-c:a', 'pcm_s24le'],
                     'original': ['-c:a', 'copy']}[body.format]
         files = []
-        config = []
         try:
             for index, track in enumerate(body.tracks):
                 if not track.selected:
@@ -393,10 +391,6 @@ def export(sid: str, body: ExportRequest):
                 speed = 2 ** (shift / 12) if body.neko else 1
                 content_duration = (end - track.start) / speed
                 output_duration = content_duration + padding
-                if body.neko and output_duration >= 420:
-                    raise ValueError(f'{track.title} exceeds 7:00. Enable automatic fitting or increase the shift.')
-                if body.neko and body.format == 'wav' and output_duration * 48000 * 2 * 2 + 44 >= 20_000_000:
-                    raise ValueError(f'{track.title} would exceed 20 MB as WAV. Choose MP3 or OGG.')
                 title = clean_title(track.title) if body.clean_titles else track.title
                 name = f'{index + 1:02} - {safe_name(title)}{extension}'
                 job.update(message=f'Exporting {len(files) + 1} of {len(chosen)}: {track.title}', progress=100 * len(files) / len(chosen))
@@ -454,39 +448,21 @@ def export(sid: str, body: ExportRequest):
                     args += ['-metadata', f'title={title}', '-metadata', f'artist={body.artist}',
                              '-metadata', f'album={body.album}', '-metadata', f'track={index + 1}']
                 args += [target / name]
-                if body.neko and body.format == 'wav':
-                    args[args.index('pcm_s24le')] = 'pcm_s16le'
                 try:
                     run_ffmpeg(args, timeout=1800)
                 finally:
                     if script:
                         script.unlink(missing_ok=True)
-                if body.neko and (target / name).stat().st_size >= 20_000_000:
-                    raise ValueError(f'{track.title} exceeds 20 MB after encoding. Choose MP3 or increase the shift.')
                 files.append({'name': name, 'size': (target / name).stat().st_size,
                               'url': f'/api/sources/{sid}/downloads/{eid}/{quote(name, safe="")}',
-                              'duration': output_duration, 'effectSpeed': round(1 / speed, 6) if body.neko else None})
-                if body.neko:
-                    config.append({'title': title, 'file': name, 'assetId': 0,
-                                   'effectSpeed': round(1 / speed, 6), 'exportSpeed': round(speed, 6),
-                                   'shiftSemitones': round(shift, 2), 'durationSeconds': round(output_duration, 3)})
+                              'duration': output_duration, 'effectSpeed': None,
+                              'shift': round(shift,2) if body.neko else 0})
             extra_files = []
             if body.redactions:
                 report = {'mode':body.cleanup_mode, 'edits':[e.model_dump() for e in body.redactions],
                           'notice':'User-reviewed content edits. Not a moderation verdict or copyright clearance.'}
                 (target / 'content-cleanup-report.json').write_text(json.dumps(report,indent=2,ensure_ascii=False),encoding='utf-8')
                 extra_files.append('content-cleanup-report.json')
-            if body.neko:
-                (target / 'nekodj-track-values.json').write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding='utf-8')
-                table = io.StringIO(newline='')
-                writer = csv.DictWriter(table, fieldnames=list(config[0]))
-                writer.writeheader()
-                writer.writerows(config)
-                (target / 'nekodj-track-values.csv').write_text(table.getvalue(), encoding='utf-8-sig')
-                lua = '-- Template: add your uploaded Roblox audio IDs and adapt to your NekoDJ schema.\nreturn {\n'
-                lua += '\n'.join('  { title = ' + json.dumps(c['title'], ensure_ascii=False) + f", assetId = 0, effectSpeed = {c['effectSpeed']:.6f}" + ' },' for c in config)
-                (target / 'nekodj-config-template.lua').write_text(lua + '\n}\n', encoding='utf-8')
-                extra_files += ['nekodj-track-values.json', 'nekodj-track-values.csv', 'nekodj-config-template.lua']
             archive = target / 'tracks.zip'
             with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_STORED) as bundle:
                 for item in files:
@@ -494,14 +470,19 @@ def export(sid: str, body: ExportRequest):
                 for name in extra_files:
                     bundle.write(target / name, name)
             result = {'files': files, 'zip': f'/api/sources/{sid}/downloads/{eid}/tracks.zip',
-                    'zip_name': safe_name(source['title']) + (' - NekoDJ' if body.neko else '') + '.zip',
-                    'config': config, 'export_id': eid, 'cleanup_count':len(body.redactions)}
+                    'zip_name': safe_name(source['title']) + '.zip',
+                    'config': [], 'export_id': eid, 'cleanup_count':len(body.redactions)}
             (target / 'export.json').write_text(json.dumps(result), encoding='utf-8')
             return result
         except Exception:
             shutil.rmtree(target, ignore_errors=True)
             raise
-    return new_job(work,kind='export',payload={'sid':sid,'body':body.model_dump()})
+    return work
+
+
+@app.post('/api/sources/{sid}/export')
+def export(sid: str, body: ExportRequest):
+    return new_job(prepare_export(sid,body),kind='export',payload={'sid':sid,'body':body.model_dump()})
 
 
 class OrganizeRequest(BaseModel):
@@ -558,6 +539,8 @@ register_setup(app)
 register_projects(app,get_source,session_path,prepare_source,DraftRequest)
 register_advanced(app,get_source,session_path,run_ffmpeg)
 register_cleanup(app, ROOT, get_source, session_path, run_ffmpeg, new_job)
+from playlist_exports import register_playlist_exports
+register_playlist_exports(app,DATA,ROOT,get_source,session_path,prepare_export,ExportRequest,safe_name)
 app.mount('/', StaticFiles(directory=ASSETS / 'static', html=True), name='static')
 
 if __name__ == '__main__':

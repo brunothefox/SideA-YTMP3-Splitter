@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from runtime import VERSION
 OUT=ROOT/'releases';OUT.mkdir(exist_ok=True)
-FILES=['app.py','runtime.py','jobs.py','launcher.py','content_cleanup.py','speech_engine.py','setup_components.py','project_io.py','advanced.py','youtube_import.py',
+FILES=['app.py','runtime.py','jobs.py','launcher.py','content_cleanup.py','speech_engine.py','setup_components.py','project_io.py','advanced.py','youtube_import.py','playlist_exports.py',
        'requirements.txt','start.bat','start.ps1','start.sh','setup-cleanup.ps1','README.md','LICENSE','THIRD_PARTY.md','SideA.spec','PRODUCT.md','DESIGN.md','CONTRIBUTING.md','CHANGELOG.md','.gitignore']
 FOLDERS=['static','resources','scripts','tests','benchmarks','.github']
 def allowed():

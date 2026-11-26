@@ -1,5 +1,7 @@
 """Isolated browser test of collection UI with local, synthetic downloader fixtures."""
 import os
+import io
+import zipfile
 import socket
 import subprocess
 import sys
@@ -70,16 +72,63 @@ with tempfile.TemporaryDirectory(prefix='youtube-ui-',dir=OUTPUT) as workspace:
             page.wait_for_function('youtubeState.batch?.imported === 2 && youtubeState.batch.failed === 1 && !state.importing',timeout=60000)
             assert page.locator('[data-youtube-source]').count()==2
             page.locator('#youtube-retry-failed').click()
-            print('Retry requested')
             page.wait_for_function('youtubeState.batch?.imported === 3 && youtubeState.batch.failed === 0 && !state.importing',timeout=60000)
             assert len(list((Path(workspace)/'data').glob('*/source.json')))==3
+            page.locator('#youtube-batch-results audio').first.evaluate('(player) => player.play()')
+            page.wait_for_function('!document.querySelector("#youtube-batch-results audio").paused')
+            page.locator('#youtube-batch-results audio').first.evaluate('(player) => player.pause()')
             page.locator('[data-youtube-source]').last.click()
-            page.wait_for_function('state.source.title === "Imported C2345678903"')
+            page.wait_for_function('state.source?.title === "Imported C2345678903"')
+            assert page.locator('#playlist-back').is_visible()
+            page.locator('#playlist-back').click()
+            assert page.locator('#playlist-workspace').is_visible()
+            assert not page.locator('#workspace').is_visible()
+            page.locator('#playlist-format').select_option('wav')
+            page.locator('#playlist-export-button').click()
+            page.locator('#playlist-zip').wait_for(state='visible',timeout=60000)
+            page.wait_for_function('!state.exporting')
+            exported=page.locator('#playlist-zip').get_attribute('href')
+            bundle=zipfile.ZipFile(io.BytesIO(page.request.get(f'http://127.0.0.1:{port}'+exported).body()))
+            assert len([name for name in bundle.namelist() if name.endswith('.wav')])==3
+            assert not any('nekodj' in name or name.endswith('.lua') for name in bundle.namelist())
+            page.locator('#playlist-mode').select_option('cuts')
+            page.locator('#playlist-layout').select_option('flat')
+            page.locator('#playlist-export-button').click()
+            page.locator('#playlist-zip').wait_for(state='visible',timeout=60000)
+            page.wait_for_function('!state.exporting')
+            exported=page.locator('#playlist-zip').get_attribute('href')
+            bundle=zipfile.ZipFile(io.BytesIO(page.request.get(f'http://127.0.0.1:{port}'+exported).body()))
+            audio=[name for name in bundle.namelist() if name.endswith('.wav')]
+            assert len(audio)==6 and all('/' not in name for name in audio)
+            page.screenshot(path=str(OUTPUT/'playlist-desktop.png'),full_page=True)
+            page.set_viewport_size({'width':390,'height':844})
+            page.screenshot(path=str(OUTPUT/'playlist-mobile.png'),full_page=True)
+            assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+            page.set_viewport_size({'width':1440,'height':1000})
+            page.reload()
+            page.locator('#playlist-open').wait_for(state='visible')
+            page.locator('#playlist-open').click()
+            assert page.locator('#playlist-selected-count').inner_text()=='3 of 3 selected'
+            page.locator('[data-youtube-source]').last.click()
+            page.wait_for_function('state.source?.title === "Imported C2345678903"')
             page.locator('#change-source').click()
             page.locator('#youtube-url').fill('https://youtube.com/shorts/A2345678901?feature=share')
             page.locator('#youtube-form>button').click()
-            page.wait_for_function('state.source.title === "Imported A2345678901" && !state.importing',timeout=60000)
+            page.wait_for_function('state.source?.title === "Imported A2345678901" && !state.importing',timeout=60000)
             assert len(list((Path(workspace)/'data').glob('*/source.json')))==4
+            page.locator('#split-file').set_input_files([str(tone),str(tone)])
+            page.wait_for_function('youtubeState.batchRequest?.local && youtubeState.batch.imported === 2 && !state.importing',timeout=60000)
+            assert page.locator('#playlist-workspace').is_visible()
+            page.locator('#playlist-mode').select_option('interval')
+            page.locator('#playlist-interval').fill('2')
+            page.locator('#playlist-interval').dispatch_event('change')
+            page.locator('#playlist-format').select_option('ogg')
+            page.locator('#playlist-export-button').click()
+            page.locator('#playlist-zip').wait_for(state='visible',timeout=60000)
+            page.wait_for_function('!state.exporting')
+            exported=page.locator('#playlist-zip').get_attribute('href')
+            bundle=zipfile.ZipFile(io.BytesIO(page.request.get(f'http://127.0.0.1:{port}'+exported).body()))
+            assert len([name for name in bundle.namelist() if name.endswith('.ogg')])==4
             page.evaluate('window.scrollTo(0,0)')
             page.screenshot(path=str(OUTPUT/'youtube-desktop.png'),full_page=True)
             page.set_viewport_size({'width':390,'height':844})
@@ -87,7 +136,7 @@ with tempfile.TemporaryDirectory(prefix='youtube-ui-',dir=OUTPUT) as workspace:
             assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
             assert not errors,errors
             browser.close()
-            print('YouTube browser checks passed: playlist selection, unavailable item, partial failure, retry without duplicate projects, source opening, Shorts, mobile layout.')
+            print('Browser passed: playlist imports/retries, audio playback, editor return, whole/cut ZIPs, no game configs, refresh recovery, Shorts, multi-file import, equal-duration OGG exports, mobile layout.')
     finally:
         server.terminate()
         try:server.wait(timeout=10)

@@ -1,5 +1,15 @@
 # Changes
 
+## 1.2.0
+
+- Unified playlist and multi-file batch workspace with audio previews, search, selection, and return from cut editing.
+- One ZIP for whole sources, saved selected cuts, or equal-duration parts; folders per source or collision-safe flat names.
+- Shared format, metadata removal, clean filenames, padding, fades, and linked pitch/speed controls.
+- Persistent export queue with pause/cancel, refresh recovery, and retries that retain completed audio.
+- Individual output previews/downloads, CSV/JSON file lists, and an organize/open-folder action.
+- Removed NekoDJ config generation and asset-ID mapping; new exports focus on audio.
+- Fixed a late import refresh interrupting preview playback.
+
 ## 1.1.0
 
 - YouTube Shorts, share, embed, recorded-live, Music, and channel-upload links normalize consistently.

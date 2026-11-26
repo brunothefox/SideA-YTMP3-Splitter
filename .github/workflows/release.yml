@@ -61,5 +61,9 @@ jobs:
         shell: bash
         run: |
           tag="v${RELEASE_VERSION}"
-          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --target "$GITHUB_SHA" --title "Side A ${RELEASE_VERSION}" --notes-file CHANGELOG.md
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            git tag "$tag" "$GITHUB_SHA"
+            git push origin "refs/tags/$tag"
+          fi
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --verify-tag --title "Side A ${RELEASE_VERSION}" --notes-file CHANGELOG.md
           gh release upload "$tag" "releases/SideA-${RELEASE_VERSION}-windows-x64.zip" "releases/SideA-${RELEASE_VERSION}-source.zip" releases/SHA256SUMS.txt --clobber

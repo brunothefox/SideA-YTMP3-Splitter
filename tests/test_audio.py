@@ -93,7 +93,7 @@ def test_tracklist_and_local_access():
 
 
 @pytest.mark.parametrize('format', ['mp3', 'ogg', 'wav'])
-def test_neko_shift_padding_config_and_folder(tone, tmp_path, format):
+def test_audio_shift_padding_and_folder(tone, tmp_path, format):
     response = client.post('/api/upload', files={'file': ('mix.wav', tone.read_bytes(), 'audio/wav')})
     source = wait_job(response.json()['job'])
     folder = None
@@ -107,8 +107,8 @@ def test_neko_shift_padding_config_and_folder(tone, tmp_path, format):
         assert sid in [s['id'] for s in client.get('/api/library').json()['sources']]
         payload = {'tracks':tracks,'format':format,'neko':True,'shift':12,'padding_start':.5,'padding_end':.75,'clean_titles':True,'fade':.02}
         result = wait_job(client.post(f'/api/sources/{sid}/export', json=payload).json()['job'])
-        assert result['config'][0]['effectSpeed'] == .5
-        assert result['config'][0]['title'] == 'Test Song'
+        assert result['config'] == []
+        assert result['files'][0]['shift'] == 12
         assert result['files'][0]['name'] == '01 - Test Song.' + format
         output = tmp_path / result['files'][0]['name']
         output.write_bytes(client.get(result['files'][0]['url']).content)
@@ -120,12 +120,12 @@ def test_neko_shift_padding_config_and_folder(tone, tmp_path, format):
         assert max(abs(n) for n in pcm[:3000]) < 100
         assert max(abs(n) for n in pcm[-4000:]) < 100
         bundle = zipfile.ZipFile(io.BytesIO(client.get(result['zip']).content))
-        assert {'nekodj-track-values.csv','nekodj-track-values.json','nekodj-config-template.lua'} <= set(bundle.namelist())
+        assert not any('nekodj' in name or name.endswith('.lua') for name in bundle.namelist())
         response = client.post(f'/api/sources/{sid}/exports/{result["export_id"]}/organize',json={'name':'Test Organized Mix','open_folder':False})
         assert response.status_code == 200
         folder = Path(response.json()['folder'])
         assert (folder / 'Audio' / result['files'][0]['name']).exists()
-        assert (folder / 'Config' / 'nekodj-track-values.json').exists()
+        assert not (folder / 'Config').exists()
         assert client.post(f'/api/sources/{sid}/export',json={'tracks':tracks,'format':'original','padding_end':1}).status_code == 400
     finally:
         shutil.rmtree(DATA / source['id'])

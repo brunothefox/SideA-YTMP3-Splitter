@@ -6,7 +6,7 @@
 
 Windows: download the latest `SideA-…-windows-x64.zip`, extract the entire folder, then double-click `SideA.exe`. Keep the terminal open while using the app; Ctrl+C stops it. Python, FFmpeg, the CPU speech worker, and Node.js are bundled. No administrator installation is required. The app opens localhost automatically and picks another local port if 8000 is occupied. Releases are unsigned.
 
-Open **Setup & jobs** to download speech models (148 MB or 488 MB). An optional NVIDIA engine enables GPU processing; **Create compact accuracy model** generates a quantized version. These downloads are separate so the public package stays smaller. Audio is processed locally. Downloads need internet; YouTube imports also contact YouTube. Browser-only NekoDJ conversion works without uploading audio to the local server.
+Open **Setup & jobs** to download speech models (148 MB or 488 MB). An optional NVIDIA engine enables GPU processing; **Create compact accuracy model** generates a quantized version. These downloads are separate so the public package stays smaller. Audio is processed locally. Downloads need internet; YouTube imports also contact YouTube.
 
 User audio, settings and job history live in the portable folder's `workspace` directory. Move that directory with the app to preserve projects, or use per-project backups. The source ZIP/repository never contains imported audio, local transcripts, credentials, model weights, or generated exports.
 
@@ -18,15 +18,13 @@ Linux/macOS: download the source ZIP, install Python 3.11+ and Node.js, and run 
 - Job history and pause/resume/cancel/retry. Pause and cancellation take effect at processing checkpoints; an active speech request may finish its current section first.
 - Zoomed waveform editor with draggable censor boundaries, original/cleaned listening, and passage looping.
 - Private project ZIP backups/restores, saved cleanup decisions, disk usage and individual project deletion.
-- Opt-in browser-session saving restores browser-only NekoDJ source files and settings through IndexedDB. Use Clear saved session to remove them; converted files can be regenerated.
-- NekoDJ audio-ID mapping: enter IDs after uploading to Roblox, then regenerate the JSON/CSV/Lua config in your ZIP. The Lua file remains a template for your actual NekoDJ schema.
 - Optional Demucs vocal separation and vocal-only cleanup, preserving the instrumental as far as separation quality allows. This add-on needs Python 3.11 and its separate dependencies; full-signal muting remains available.
 - Optional contextual transcript review through **local Ollama**, alongside basic phrase flags. Install/start Ollama and a model separately; choose it in the cleanup panel. Suggestions remain unselected for human review. Nothing is sent to a hosted AI API.
 - Setup/diagnostics, user-triggered update checks, and evaluation tools under `benchmarks/` for measuring misses, false alarms, and transcription errors on permissioned test recordings.
 
 The interface is intentionally kept close to the existing design for a separate UI refinement. See [CONTRIBUTING.md](CONTRIBUTING.md) for the DOM/API handoff map.
 
-A local audio splitter and browser-only NekoDJ preparation tool.
+A local audio splitter and batch exporter for files, mixes, and YouTube playlists.
 
 ## Run on Windows
 
@@ -46,9 +44,9 @@ Upload an audio file (up to 2 GB), or paste a YouTube link. Standard videos, Sho
 
 ### YouTube playlists, Shorts, and channels
 
-Paste the link into **Bring a YouTube video or playlist**, then click **Read link & import**. For a collection, select the videos and choose **Import selected videos**. Each video gets a separate project with chapters when available. Progress and failures are shown per video; failed videos do not discard successful imports. Use **Retry unfinished videos** or retry a cancelled job to retain completed sources. The most recent batch can be recovered after refreshing the browser.
+Paste the link into **YouTube video or playlist**, then click **Read YouTube link**. For a collection, select the videos and choose **Import selected videos**. Each video gets a separate project with chapters when available. Progress and failures are shown per video; failed videos do not discard successful imports. Use **Retry unfinished imports** or retry a cancelled job to retain completed sources. The most recent batch can be recovered after refreshing the browser.
 
-Playlist options let you choose a starting position and list up to 200 videos per batch (50 by default). **Next videos** reads the next range. A watch URL containing both a video and a playlist imports only that video unless **Use the linked playlist** is checked. Collection imports run sequentially and support the existing job pause/cancel/retry controls.
+Playlist options let you choose a starting position and list up to 200 videos per batch (50 by default). **Next videos** reads the next range. A watch URL containing both a video and a playlist opens the playlist by default; uncheck **Open the playlist** to import only that video. Collection imports run sequentially and support job pause/cancel/retry controls.
 
 Private, deleted, region-restricted, age-gated, DRM-protected, bot-blocked, or sign-in-required content may be unavailable. Ongoing/upcoming livestreams are not imported; completed recordings can be. No account cookies are read, and link support is not a promise that every YouTube item can be downloaded.
 
@@ -56,25 +54,23 @@ Preview each track; edit start times and names. Export MP3 at 320 kbps, FLAC, 24
 
 YouTube imports download the best available audio. Restricted, age-gated, private, live, or bot-blocked videos may fail. No account cookies are accessed. Update yt-dlp if extraction breaks: `./.venv/Scripts/python.exe -m pip install -U "yt-dlp[default]"`. The extractor may fetch its official JavaScript challenge component from GitHub when required.
 
-## Prepare for NekoDJ
+## Playlist and local batch exports
 
-For large YouTube mixes, use **Prepare for → NekoDJ + config** in the splitter's export panel. This processes tracks sequentially on your local server instead of decoding the entire mix into browser memory. **Auto** keeps short tracks at their source speed and increases linked pitch/tempo only enough to fit longer tracks (including padding) below 7:00. **Bright** starts at +4 semitones; **Custom** lets you choose the shift. Each output gets its own calculated effectSpeed.
+1. Paste a playlist link, click **Read YouTube link**, choose videos, and click **Import selected videos**. Or select/drop multiple local files (up to 200 files, 2 GB each).
+2. Preview any imported source in the list. Use **Edit cuts** for custom boundaries or cleanup, then **Back to playlist & batch export**.
+3. Select the sources to export. Choose **One audio file per video**, **Saved cuts from each video**, or **Split every fixed duration**. Saved-cut mode respects deselected tracks; equal-duration mode creates new cuts and can end with a shorter final part.
+4. Choose MP3 (320 kbps), high-quality Vorbis OGG, FLAC, WAV (24-bit PCM), or original codec. Select one folder per source or a flat audio folder. Numbered names prevent collisions when titles repeat.
+5. Optional finishing includes clean filenames, descriptive metadata removal, padding, edge fades, and linked pitch/speed changes. Original-codec export cannot apply audio filters. FLAC/WAV do not restore quality lost in the original source.
+6. Click **Export playlist ZIP**. Pause, resume, or cancel as needed. **Retry unfinished exports** reuses successful files when settings are unchanged. Changing the settings starts a new export.
+7. Download the ZIP, preview/download individual outputs, or **Organize & open folder**. The ZIP contains audio, CSV/JSON file lists, and cleanup reports when applicable. No NekoDJ config, asset-ID mapping, or Lua templates are generated.
 
-Expand **Padding & finishing** to add up to 10 seconds of silence before and after each track, choose an edge fade, and clean titles. **Clean titles** in the tracklist previews the cleanup before export: it strips URLs, emoji/symbol clutter, leading numbering, and common release tags while preserving letters from other languages. Review/edit titles yourself; cleanup does not guarantee Roblox approval.
+The batch queue and completed export download can be restored after refreshing the browser. If the app closes mid-export, retry the unfinished queue; completed sources are retained. Local file-import retries need the original files still selected in the same session; after restarting, reselect failed local files. Imported projects remain on disk.
 
-The ZIP includes audio plus a JSON table, CSV table, and Lua config template. **Organize & open folder** saves copies under `exports/<mix>/Audio` and `Config` and opens the folder on Windows. No Roblox account access or automatic uploads are involved.
+## Single-source editing and audio effects
 
-The project rail lists imported mixes. Edits and export settings auto-save to local disk and browser storage; undo/redo, title search, select/deselect, tracklist text download, original/shifted preview, and per-file output players are built in. Keyboard shortcuts outside text fields: Space to play/pause, M to cut, Left/Right to seek 5 seconds, Ctrl+Z to undo, Ctrl+Shift+Z to redo.
+A single file or video opens in the waveform editor. Add cuts at the playhead, paste timestamps, or use **Split this audio by duration**. Search, select/deselect, rename, and undo/redo cuts before exporting.
 
-The NekoDJ tab decodes and converts files entirely inside your browser, with no audio upload. Drop multiple songs or send the splitter's exported tracks into it. Each track has a waveform, preview, shift in semitones, volume, linked/manual compensation, and OGG/MP3/WAV export. Batch settings include padding, fades, title cleanup, and minimum-shift auto-fitting. **Save to folder** uses Chrome/Edge's folder picker and writes audio and config directly to your chosen directory. Browser format support varies; MP3 and WAV are the fallback for unsupported input formats. Per-file input limit: 250 MB, with a 512 MiB estimated decoded-audio budget. For larger lists, use direct NekoDJ export in the splitter.
-
-Speed = `2 ** (semitones / 12)`. Linked `effectSpeed = 1 / speed`. For example, +4 st → 1.259921× → effectSpeed 0.793701, matching the supplied reference. Manual mode lets you override compensation. Copy the number into your own NekoDJ config; the downloaded config note is a field snippet, not a complete game config.
-
-For a whole mix, use **Split & prep for NekoDJ** on the splitter's selected tracks. It transfers losslessly encoded FLAC cuts to the browser workspace. In NekoDJ, select the tracks, apply a shared shift, volume, format, and linked/manual compensation, then choose **Convert selected**. The optional fit setting raises each long track's shift individually. Download the batch ZIP for the audio files, a JSON table of matching effectSpeed values, and a Lua template with placeholder Roblox asset IDs. No Roblox uploads happen automatically.
-
-Long tracks default to fit within 6:59. Output is checked against Roblox's duration and 20 MB limits. Exports are 48 kHz, up to stereo: MP3 192 kbps, OGG/Opus 192 kbps (requires WebCodecs in a modern browser), or WAV 16-bit PCM. WAV may exceed 20 MB; use MP3/OGG. This does not guarantee Roblox moderation acceptance.
-
-Use audio you own or have permission to use. Speed and pitch changes do not remove copyright. Roblox requirements: https://create.roblox.com/docs/audio/assets
+Use **Prepare for → Pitch & speed effects** for linked pitch/tempo shifts. Automatic fitting under seven minutes is optional. Padding, fades, metadata removal, and clean filenames also work without shifting. Exported ZIPs contain audio and any requested cleanup report.
 
 ## Explicit-language cleanup and theme review
 
@@ -84,10 +80,10 @@ The splitter includes **Explicit language & theme review**. This is an offline a
 2. Select starter dictionaries or the extended English dictionary (835 entries), and add custom words/phrases. Matching uses whole words, Unicode normalization, and rejoined transcription tokens; it does not match `ass` inside `assistant`.
 3. Scan. Word matches and theme phrase signals include context, confidence, and editable timestamps. Theme flags start deselected. Themes use curated phrases covering sexual content, threats/violence, drugs, self-harm, harassment, and personal information. They are limited phrase signals, not semantic classification or exhaustive policy coverage. Non-English theme coverage is limited; supply your own phrases.
 4. Listen, adjust timing, and add manual marks for missed words. Transcription can mishear sung lyrics, homophones, background vocals, and mixed languages. No-match results are not a clean bill of health.
-5. Choose silence or bleep and generate an original/cleaned preview. Both options remove the marked original signal. Bleep replaces it with a 1 kHz tone; short edge ramps reduce clicks. The entire audio in a marked span is affected, including instruments; vocal-only separation is not implemented.
-6. Review the marks and click **Apply cleanup to export**. Edits are applied before NekoDJ speed shifts and padding, so source timestamps remain aligned. The ZIP includes `content-cleanup-report.json`. Changing a mark disables application until reviewed again.
+5. Choose silence or bleep and generate an original/cleaned preview. Both options remove the marked original signal. Bleep replaces it with a 1 kHz tone; short edge ramps reduce clicks. The entire audio in a marked span is affected, including instruments; optional vocal-only separation is available through Setup.
+6. Review the marks and click **Apply cleanup to export**. Edits are applied before speed shifts and padding, so source timestamps remain aligned. The ZIP includes `content-cleanup-report.json`. Changing a mark disables application until reviewed again.
 
-**Remove embedded metadata** is on by default in the UI, under Padding & finishing. It strips descriptive tags and attachments from the audio, including title, artist, album, comments, and track number. Filenames, ZIP config/report names, and unavoidable technical/container information remain. Duration, bitrate, sample rate, and channel count are properties of the audio and cannot be hidden by tag removal.
+**Remove embedded metadata** is on by default in the UI, under Padding & finishing. It strips descriptive tags and attachments from the audio, including title, artist, album, comments, and track number. Filenames, ZIP file-list/report names, and unavoidable technical/container information remain. Duration, bitrate, sample rate, and channel count are properties of the audio and cannot be hidden by tag removal.
 
 Whisper runs locally through whisper.cpp. Installed models live under `tools/models`, and transcript caches and preview files stay beside each source in `data/`. Balanced mode uses multilingual Whisper base (148 MB). Higher-accuracy mode uses multilingual Whisper small (488 MB); it can still make mistakes and runs more slowly. One-minute overlapping sections keep long-source processing bounded, and transcripts are cached for fast word-list rechecks. Only software/model downloads need internet access; audio is not sent to a transcription service.
 
@@ -97,7 +93,7 @@ On a new checkout, run `./setup-cleanup.ps1` for balanced scanning, or `./setup-
 
 ## Privacy and storage details
 
-The server binds only to `127.0.0.1`. Splitter imports and exports stay under `data/` on your disk. YouTube contacts YouTube and its delivery services. NekoDJ uploads no audio; all encoder scripts are served locally. No telemetry, external fonts, API keys, or cloud storage. Files persist across restarts; stop the app and delete `data/` to clear them. Your last source is remembered in this browser. Avoid multiple instances sharing the same port.
+The server binds only to `127.0.0.1`. Splitter imports and exports stay under `data/` on your disk. YouTube contacts YouTube and its delivery services. All audio conversion runs on the local server. No telemetry, external fonts, API keys, or cloud storage. Files persist across restarts; stop the app and delete `data/` to clear them. Your last source is remembered in this browser. Avoid multiple instances sharing the same port.
 
 ## Development
 
@@ -106,8 +102,4 @@ The server binds only to `127.0.0.1`. Splitter imports and exports stay under `d
 ./.venv/Scripts/python.exe -m pytest -q
 ```
 
-Browser tests use installed Chrome and the running server. `tests/browser_check.py` exercises import, editing, ZIP export, NekoDJ preview and all three encoders. The synthetic tone fixture is generated locally; no copyrighted samples are included.
-
-`tests/studio_check.py` additionally exercises title cleanup, undo/redo, search, shifted preview, padding, NekoDJ config ZIPs, saved drafts/settings, mobile layout, and browser-only padding. Backend tests check actual decoded padding and durations in MP3, Vorbis OGG, and WAV, and verify folder organization without opening Explorer.
-
-The locally vendored lamejs MP3 encoder uses LAME under the LGPL; see the upstream notice in `static/vendor/lamejs-LICENSE.txt`. It is served as a separate, unmodified script. Upstream source: https://github.com/zhuker/lamejs · LAME project: https://lame.sourceforge.net
+Browser checks use installed Chrome. Run `python tests/youtube_browser_check.py` for an isolated synthetic playlist/local-file flow: unavailable items, retries, playback, editor return, whole/cut/interval exports, refresh recovery, and desktop/mobile layouts. `python -m pytest -q` checks actual decoded audio, padding, cleanup, metadata, cancellation, retries, and archive layouts. No copyrighted test recordings are included.

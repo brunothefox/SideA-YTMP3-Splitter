@@ -158,21 +158,4 @@ def register_advanced(app,get_source,session_path,run_ffmpeg):
 
     @app.post('/api/sources/{sid}/exports/{eid}/asset-map')
     def asset_map(sid:str,eid:str,body:AssetMap):
-        import re
-        if not re.fullmatch(r'[a-f0-9]{32}',eid):raise HTTPException(404,'Export not found.')
-        directory=session_path(sid)/eid;path=directory/'export.json'
-        if not path.exists():raise HTTPException(404,'Export not found.')
-        data=json.loads(path.read_text(encoding='utf-8'));config=data.get('config',[])
-        if not config:raise HTTPException(400,'Export with NekoDJ + config first.')
-        mapping={entry.file:entry.assetId for entry in body.entries}
-        for item in config:item['assetId']=mapping.get(item['file'],item.get('assetId',0))
-        (session_path(sid)/'asset-map.json').write_text(json.dumps(config,ensure_ascii=False),encoding='utf-8')
-        (directory/'nekodj-track-values.json').write_text(json.dumps(config,indent=2,ensure_ascii=False),encoding='utf-8')
-        output=io.StringIO();writer=csv.DictWriter(output,fieldnames=list(config[0]));writer.writeheader();writer.writerows(config)
-        (directory/'nekodj-track-values.csv').write_text(output.getvalue(),encoding='utf-8-sig')
-        lua='-- Adapt to your NekoDJ schema; assetId 0 still needs an uploaded audio ID.\nreturn {\n'+'\n'.join('  { title = '+json.dumps(c['title'],ensure_ascii=False)+f", assetId = {c['assetId']}, effectSpeed = {c['effectSpeed']:.6f}"+' },' for c in config)+'\n}\n'
-        (directory/'nekodj-config-template.lua').write_text(lua,encoding='utf-8');path.write_text(json.dumps(data),encoding='utf-8')
-        with zipfile.ZipFile(directory/'tracks.zip','w',zipfile.ZIP_STORED) as bundle:
-            for file in directory.iterdir():
-                if file.is_file() and file.name not in {'tracks.zip','export.json'}:bundle.write(file,file.name)
-        return data
+        raise HTTPException(410,'Game config generation has been removed. Exports contain audio files.')

@@ -83,17 +83,18 @@ def test_backup_rejects_zip_traversal():
     assert response.status_code==400
     assert not (DATA/'escaped.txt').exists()
 
-def test_detailed_waveform_and_asset_mapping(source):
+def test_detailed_waveform_and_removed_asset_mapping(source):
     sid=source['id']
     result=client.get(f'/api/sources/{sid}/waveform?start=1&end=2')
     assert result.status_code==200 and result.json()['peaks']
     assert client.get(f'/api/sources/{sid}/waveform?start=-1&end=2').status_code==400
     exported=wait(client.post(f'/api/sources/{sid}/export',json={'tracks':[{'start':0,'title':'Test'}],'format':'mp3','neko':True,'shift':0}).json()['job'])
-    response=client.post(f'/api/sources/{sid}/exports/{exported["export_id"]}/asset-map',json={'entries':[{'file':exported['config'][0]['file'],'assetId':123456789}]})
-    assert response.status_code==200
+    response=client.post(f'/api/sources/{sid}/exports/{exported["export_id"]}/asset-map',json={'entries':[]})
+    assert response.status_code==410
+    assert exported['config']==[]
     bundle=zipfile.ZipFile(io.BytesIO(client.get(exported['zip']).content))
-    assert json.loads(bundle.read('nekodj-track-values.json'))[0]['assetId']==123456789
-    assert b'assetId = 123456789' in bundle.read('nekodj-config-template.lua')
+    assert not any('nekodj' in name for name in bundle.namelist())
+
 
 def test_vocal_only_cleanup_preserves_instrumental(source,tmp_path):
     sid=source['id'];folder=DATA/sid/'stems/htdemucs/source';folder.mkdir(parents=True)

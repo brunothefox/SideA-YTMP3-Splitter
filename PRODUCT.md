@@ -6,23 +6,21 @@
 web
 
 ## Product Purpose
-A locally hosted audio splitter. Import an audio file or YouTube video, detect embedded chapters or description timestamps, preview and edit boundaries, then download named tracks individually or as a ZIP.
-
-The NekoDJ workspace prepares individual songs or selected batches with pitch/speed shifts, volume adjustment, linked or manual effectSpeed values, and browser-only MP3/OGG/WAV conversion. Long tracks default to fit below seven minutes. Splitter exports can be sent directly to this workspace. Batch downloads include audio and corresponding config values.
-
-Large mixes can also be exported directly from the splitter to NekoDJ-ready audio and config on the local server. Auto shift uses the minimum linked pitch/tempo increase necessary to fit each track plus its padding under seven minutes. Optional +4-semitone and custom presets, volume reduction, start/end silence padding, and edge fades are available. Selected titles can be cleaned and edited before export. Title cleaning does not guarantee Roblox moderation approval.
-
-Imported projects and edits persist locally. The editor offers undo/redo, track search, selection tools, an editable tracklist download, original/shifted audition, and per-file output players. Export settings are saved with the draft. Organized server exports are stored under `exports/<project>/Audio` and `Config`; browser-only batches can be saved through the browser's folder picker.
+A localhost audio splitter and batch exporter. Import local audio or YouTube videos/Shorts/playlists/channel uploads; preview sources, edit chapter or timestamp cuts, and export named audio files individually or in organized ZIPs.
 
 ## Operating Context
-Runs on the user's computer, bound to localhost. Files stay in the local data directory; YouTube imports require internet access.
+Runs on the user's own computer, bound to localhost. Imported projects and exports persist on disk; software downloads and YouTube imports need internet. No cloud audio processing or automatic external uploads.
 
 ## Capabilities and Constraints
+Single-source waveform editing supports manual cuts, pasted timestamps, equal-duration splitting, selection, title editing, undo/redo, and saved drafts. Metadata is not song recognition. Sources without chapters require supplied timestamps, manual cuts, or fixed-duration splitting.
 
-YouTube import accepts videos, Shorts, share/embed links, Music videos, completed livestream recordings, playlists and channel upload tabs. Collections are listed for explicit selection with a bounded range; videos import sequentially into separate projects. Partial failures and cancelled batch retries retain successful imports. A video-plus-playlist link defaults to that one video. Private/restricted/DRM/sign-in-required content and ongoing livestreams are not guaranteed to import.
-Metadata is not song recognition. Sources without chapters need manual timestamps. Stream copying preserves the existing codec with frame-level cut precision. Re-encoding supports MP3, FLAC, and WAV; lossless export cannot restore missing source quality.
+The batch workspace accepts selected YouTube playlist videos or multiple local files (up to 200 per batch, 2 GB per source). Inline source previews, search, selection, and a return action from the editor keep batch work in one place. Export whole sources, saved selected cuts, or fixed-duration parts. Shared formats/finishing settings apply to the entire selection. Numbered flat or per-source folder layouts prevent duplicate-title collisions. ZIPs contain audio, CSV/JSON file lists, and optional cleanup reports; no game config files are generated.
 
-Explicit-language cleanup uses local multilingual speech recognition, word dictionaries/custom phrases, and limited theme phrase signals. Users review context and timing, add manual marks, and choose full-signal mute or bleep replacement. Approved edits are applied before shifts/padding and included in export reports. Embedded descriptive metadata can be stripped. Neither content cleanup nor tag removal guarantees Roblox approval or clears copyright. Vocal-only removal and exhaustive semantic theme classification are not implemented.
+Exports run sequentially with progress, pause/resume/cancel, persistent retry payloads, and successful-result reuse on unchanged retries. A browser refresh can restore the last batch and active or completed export. Local file upload retries require original files in the same browser session; imported projects remain on disk. Individual output previews/downloads are capped at the first 100 UI entries; all files are included in the ZIP.
+
+Formats: MP3 320 kbps, Vorbis OGG, FLAC, 24-bit WAV, or stream copy of the source codec. Optional linked pitch/speed, volume, fit below seven minutes, padding, and fades. Stream copy cannot apply filters; FLAC/WAV cannot restore source quality. Private/restricted videos and ongoing livestreams may not import.
+
+Local multilingual speech recognition, user-reviewed word/theme marks, silence/bleep replacement, optional Demucs vocal separation, and optional local Ollama transcript review assist content editing. Only applied edits are passed into batch exports. Metadata stripping removes descriptive tags while technical audio properties remain. Content processing cannot guarantee platform approval or clear copyright.
 
 ## Stack
-Implementation choice: Python FastAPI, FFmpeg, yt-dlp, and buildless HTML/CSS/JavaScript.
+Python FastAPI, FFmpeg, yt-dlp, whisper.cpp, and buildless HTML/CSS/JavaScript. Windows portable release, with source launchers for other platforms.
